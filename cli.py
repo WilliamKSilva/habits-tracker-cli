@@ -10,6 +10,13 @@ def highlighted_text(text, color, fg: bool):
 def move_text(text: str, pos: int):
     return text.rjust(pos)
 
+def read_file(path: str): 
+    try: 
+        return open(path).read()
+    except OSError:
+        print(f"Error trying to open {path} file")
+        exit(-1)
+
 def cli():
     habits = [
         {
@@ -24,7 +31,8 @@ def cli():
 
     username = highlighted_text(f"Hello {os.getlogin()}", 'magenta', True)
     greeting_text = move_text(username, 0)
-
+    ascii_text = read_file("ascii.txt")
+    click.echo(ascii_text)
     click.echo(greeting_text)
     click.echo("\n")
     click.echo("You are:")
