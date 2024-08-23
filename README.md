@@ -11,3 +11,7 @@ before deep diving in your work.
 I'am honestly building this application for personal use, but if other computer
 folk out there are fighting to overcome some bad habits too, I hope that this
 helps some way ;).
+
+# Demo
+
+![Screenshot from 2024-08-23 20-44-41](https://github.com/user-attachments/assets/08bad252-cb90-46ee-962c-457a4078f9cd)
