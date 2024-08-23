@@ -38,8 +38,7 @@ def render_quote():
     # Every day we render a different random quote
 
     f_read = open_file("quotes.json", "r", read_content=False)
-    # I don't know why but trying to load the JSON content with the file opened on
-    # read/write mode don't work 
+    # read+write mode don't work with json.load 
     quotes_data = json.load(f_read)
     f_read.close()
 
@@ -60,7 +59,6 @@ def render_quote():
     while (rand_quote_index == last_quote_index):
         rand_quote_index = randrange(0, len(quotes)) == last_quote_index
 
-    # Yeah, this is dumb we have to open the file twice
     f_write = open_file("quotes.json", "w", read_content=False)
 
     quote = quotes[rand_quote_index]
@@ -92,14 +90,14 @@ def cli():
             "date": "2024-08-16"
         },
         {
-            "name": "drinking alchool",
+            "name": "drinking alcohol",
             "date": "2024-08-16"
         }
     ]
 
     render_greeting()
     
-    click.echo("You are:")
+    click.echo(" You are:")
     for habit in habits:
         today = datetime.now()
         habit_date = datetime.fromisoformat(habit["date"])
@@ -107,7 +105,7 @@ def cli():
         name = habit["name"]
         plural = "days"
         singular = "day"
-        days = highlighted_text(f"{difference.days} {plural if difference.days > 1 else singular}", "green", True)
+        days = highlighted_text(f" {difference.days} {plural if difference.days > 1 else singular}", "green", True)
         click.echo(move_text(f"{days} without {name}", 0))
 
     render_quote()
