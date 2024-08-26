@@ -2,7 +2,7 @@ import click
 import os
 import io
 from random import randrange
-from typing import List
+from typing import List, TypedDict
 import json
 import errno
 from datetime import datetime
@@ -23,17 +23,17 @@ def overwrite_file(data, f: io.TextIOWrapper):
     f.write(data)
     f.truncate()
 
-class Habit: 
+class Habit(TypedDict): 
+    name: str 
+    date: str
+
     def __init__(self, name: str, date: str):
         self.name = name
         self.date = date
 
-    def json_serialize(self):
-        return {
-            "name": self.name,
-            "date": self.date
-        }
-
+class HabitsJson(TypedDict):
+    habits: List[Habit]
+    
 class Quote:
     def __init__(self, name: str, content: str):
         self.name = name
@@ -51,41 +51,38 @@ class State:
     # current open file
     file: io.TextIOWrapper
 
-    habits: List[Habit] = []
-
-    habits_json: any
+    habits_json: HabitsJson = {
+        "habits": []
+    }
 
     quotes: QuotesData
     quotes_json: any
 
-    def __init__(self, habit):
-        if (habit):
-            self.file = open_file("habits.json", "r+")
+    def __init__(self, habit: Habit | None):
+        self.file = open_file("habits.json", "r+")
 
+        # User not registered some habit yet
+        if (self.file == None and habit == None):
+            print('You should add a habit first, like: cli.py --habit="drinking"')
+            print("Aborted!")
+            exit(1)
+
+        if (habit):
             if (self.file == None):
                 self.file = open_file("habits.json", "x")
                 self.file.close()
                 self.file = open_file("habits.json", "r+")
-                self.habits.append(habit)
+                self.habits_json["habits"].append(habit)
             else:
-                self.habits_json = json.loads(self.file)
-                self.habits = self.habits_json["habits"]
-                self.habits.append(habit)
+                self.habits_json = json.load(self.file)
+                self.habits_json["habits"].append(habit)
 
-            habits = {
-                "habits": [] 
-            }
-
-            for h in self.habits:
-                serialized = h.json_serialize()
-                habits["habits"].append(serialized)
-
-            overwrite_file(json.dumps(habits), self.file)
+            overwrite_file(json.dumps(self.habits_json), self.file)
 
             self.file.close()
         else:
             self.file = open_file("habits.json", "r")
-            self.habits_json = json.loads(self.file)
+            self.habits_json = json.load(self.file)
             self.file.close()
 
         self.file = open_file("quotes.json", "r")
@@ -159,7 +156,16 @@ def render_quote():
 def cli(habit):
     """A CLI app to track your bad habits"""
 
-    state = State(Habit(name=habit, date="2024-08-25"))
+    habit_to_add = Habit()
+    if (habit):
+        habit_to_add["name"] = habit
+
+        date = datetime.now()
+        habit_to_add["date"] = date.strftime("%Y-%m-%d") 
+    else:
+        habit_to_add = None
+
+    state = State(habit_to_add)
 
     # habits = [
     #     {
