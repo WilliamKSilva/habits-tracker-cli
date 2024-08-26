@@ -89,16 +89,29 @@ class State:
         self.quotes_json = json.load(file)
         file.close()
 
-    
-
 class Renderer:
     @staticmethod
     def render_greeting():
-        username = f"Hello {os.getlogin()}"
+        username = Renderer.colored_text(os.getlogin(), "magenta") 
+        greeting = f"Hello {username}"
         f = open_file("ascii.txt", "r").read()
         click.echo(f)
-        click.echo(username)
+        click.echo(greeting)
         click.echo("\n")
+
+    @staticmethod
+    def render_habits(habits: List[HabitsJson.Habit]):
+        click.echo(" You are:")
+        for habit in habits:
+            today = datetime.now()
+            habit_date = datetime.fromisoformat(habit["date"])
+            difference = today - habit_date
+            name = habit["name"]
+            plural = "days"
+            singular = "day"
+            days = f" {difference.days} {singular if (difference.days == 1) else plural}"
+            habit_text = Renderer.colored_text(f"{days} without {name}", "green")
+            click.echo(habit_text)
 
     @staticmethod
     def render_quote(quotes_json: QuotesJSON):
@@ -110,9 +123,11 @@ class Renderer:
 
         if ((datetime.now() - last_quote_date).days == 0):
             click.echo("\n")
-            click.echo(quote["content"])
+            quote_content_text = Renderer.colored_text(quote["content"], "blue")
+            click.echo(quote_content_text)
 
-            click.echo(f'-- {quote["name"]} --')
+            quote_name_text = Renderer.colored_text(quote["name"], "blue")
+            click.echo(f'-- {quote_name_text} --')
             return
 
         rand_quote_index = randrange(0, len(quotes))
@@ -122,9 +137,11 @@ class Renderer:
         quote = quotes[rand_quote_index]
 
         click.echo("\n")
-        click.echo(text=quote["content"])
+        quote_content_text = Renderer.colored_text(quote["content"], "blue")
+        click.echo(quote_content_text)
 
-        click.echo(f'-- {quote["name"]} --')
+        quote_name_text = Renderer.colored_text(quote["name"], "blue")
+        click.echo(f'-- {quote_name_text} --')
 
         # Update last_quote info
         last_quote = {
@@ -140,6 +157,10 @@ class Renderer:
         file.write(updated_json)
         file.truncate()
         file.close()
+
+    @staticmethod
+    def colored_text(text: str, color: str): 
+        return click.style(text, fg=color)
 
 @click.command()
 @click.option("--habit", help='The action or name of the habit, like: "drinking alcohol" or "smoking"')
@@ -158,17 +179,8 @@ def cli(habit):
     state = State(habit_to_add)
 
     Renderer.render_greeting()
-    
-    click.echo(" You are:")
-    for habit in state.habits_json["habits"]:
-        today = datetime.now()
-        habit_date = datetime.fromisoformat(habit["date"])
-        difference = today - habit_date
-        name = habit["name"]
-        plural = "days"
-        singular = "day"
-        days = f" {difference.days} {plural if difference.days > 1 else singular}"
-        click.echo(f"{days} without {name}")
+
+    Renderer.render_habits(state.habits_json["habits"])
 
     Renderer.render_quote(state.quotes_json)
 
