@@ -2,64 +2,48 @@ import click
 import os
 import io
 from random import randrange
-from typing import List, TypedDict
+from typing import IO, Any, List, TypedDict
 import json
-import errno
 from datetime import datetime
 
 def open_file(path: str, mode: str): 
     try: 
         return open(path, mode)
-    except OSError as error:
-        if error.errno == errno.ENOENT:
-            return None
-
+    except OSError:
         print(f"Error trying to open {path} file")
         print("Aborted!")
         exit(1)
 
-def overwrite_file(data, f: io.TextIOWrapper):
+def overwrite_file(data, f: IO[Any]):
     f.seek(0)
     f.write(data)
     f.truncate()
 
+class Habit(TypedDict): 
+    name: str 
+    date: str
+
 class HabitsJson(TypedDict):
-    class Habit(TypedDict): 
-        name: str 
-        date: str
-
-        def __init__(self, name: str, date: str):
-            self.name = name
-            self.date = date
-
     habits: List[Habit]
 
-class QuotesJSON(TypedDict):
-    class Quote(TypedDict): 
-        name: str 
-        content: str
+class Quote(TypedDict): 
+    name: str 
+    content: str
 
-        def __init__(self, name: str, content: str):
-            self.name = name
-            self.content = content
-    
-    class LastQuote(TypedDict):
-        index: int
-        date: str
-     
+class LastQuote(TypedDict):
+    index: int
+    date: str
+
+class QuotesJSON(TypedDict):
     last_quote: LastQuote
     quotes: List[Quote]
 
 class State:
-    habits_json: HabitsJson = {
-        "habits": []
-    }
+    habits_json: HabitsJson
 
-    quotes_json: QuotesJSON = {
-        "quotes": []
-    }
+    quotes_json: QuotesJSON
 
-    def __init__(self, habit: HabitsJson.Habit | None):
+    def __init__(self, habit: Habit | None):
         file = open_file("habits.json", "r+")
         # User not registered some habit yet
         if (file == None and habit == None):
@@ -100,7 +84,7 @@ class Renderer:
         click.echo("\n")
 
     @staticmethod
-    def render_habits(habits: List[HabitsJson.Habit]):
+    def render_habits(habits: List[Habit]):
         click.echo(" You are:")
         for habit in habits:
             today = datetime.now()
@@ -144,7 +128,7 @@ class Renderer:
         click.echo(f'-- {quote_name_text} --')
 
         # Update last_quote info
-        last_quote = {
+        last_quote: LastQuote = {
             "date": datetime.now().date().isoformat(),
             "index": rand_quote_index
         }
@@ -167,14 +151,15 @@ class Renderer:
 def cli(habit):
     """A CLI app to track your bad habits"""
 
-    habit_to_add = HabitsJson.Habit()
+    habit_to_add: Habit = {
+        "date": "",
+        "name": ""
+    }
     if (habit):
         habit_to_add["name"] = habit
 
         date = datetime.now()
         habit_to_add["date"] = date.strftime("%Y-%m-%d") 
-    else:
-        habit_to_add = None
 
     state = State(habit_to_add)
 
