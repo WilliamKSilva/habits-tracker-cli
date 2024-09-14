@@ -46,7 +46,9 @@ def add_habit(habit: Habit | None, habits_json: HabitsJson | None):
         write_to_file(json.dumps(new_habits_json), f)
         f.close()
         return new_habits_json 
-    
+
+    print("here")
+
     if (habit == None):
         return habits_json
 
@@ -70,7 +72,8 @@ def load_habits_json() -> HabitsJson | None:
     if (f == None):
         return None
 
-    habits_json["habits"] = json.load(f)
+    json_loaded = json.load(f)
+    habits_json["habits"] = json_loaded["habits"] 
     f.close()
     return habits_json
 
