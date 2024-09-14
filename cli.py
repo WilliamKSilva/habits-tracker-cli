@@ -1,85 +1,116 @@
 import click 
 import os
-import io
-from random import randrange
-from typing import IO, Any, List, TypedDict
 import json
+from random import randrange
+from typing import IO, Any, List
 from datetime import datetime
+
+from cli_json import Habit, HabitsJson, QuotesJSON, Reason, LastQuote
 
 def open_file(path: str, mode: str): 
     try: 
         return open(path, mode)
-    except OSError:
-        print(f"Error trying to open {path} file")
+    except FileNotFoundError:
+        return None
+    except OSError as error:
+        print(f"Error trying to access file: {error}")
         print("Aborted!")
         exit(1)
 
-def overwrite_file(data, f: IO[Any]):
+def create_file(path: str):
+    try:
+        return open(path, "a")
+    except OSError:
+        print(f"Error trying to create file {path}")
+        print("Aborted!")
+        exit(1)
+
+def write_to_file(data, f: IO[Any]):
     f.seek(0)
     f.write(data)
     f.truncate()
 
-class Habit(TypedDict): 
-    name: str 
-    date: str
-
-class HabitsJson(TypedDict):
-    habits: List[Habit]
-
-class Quote(TypedDict): 
-    name: str 
-    content: str
-
-class LastQuote(TypedDict):
-    index: int
-    date: str
-
-class QuotesJSON(TypedDict):
-    last_quote: LastQuote
-    quotes: List[Quote]
-
-class State:
-    habits_json: HabitsJson
-
-    quotes_json: QuotesJSON
-
-    def __init__(self, habit: Habit | None):
-        file = open_file("habits.json", "r+")
-        # User not registered some habit yet
-        if (file == None and habit == None):
-            print('You should add a habit first, like: cli.py --habit="drinking"')
+def add_habit(habit: Habit | None, habits_json: HabitsJson | None):
+    if (habits_json == None):
+        # User don't have any habits and did not passed the required first one
+        if (habit == None):
+            print(f"You need to pass an initial habit to start tracking")
             print("Aborted!")
             exit(1)
 
-        if (habit):
-            if (file == None):
-                file = open_file("habits.json", "x")
-                file.close()
-                file = open_file("habits.json", "r+")
-                self.habits_json["habits"].append(habit)
-            else:
-                self.habits_json = json.load(file)
-                self.habits_json["habits"].append(habit)
+        new_habits_json: HabitsJson = {
+            "habits": [habit]
+        }
 
-            overwrite_file(json.dumps(self.habits_json), file)
+        f = create_file("habits.json")
+        write_to_file(json.dumps(new_habits_json), f)
+        f.close()
+        return new_habits_json 
+    
+    if (habit == None):
+        return habits_json
 
-            file.close()
-        else:
-            file = open_file("habits.json", "r")
-            self.habits_json = json.load(file)
-            file.close()
+    f = open_file("habits.json", "r+")
+    if (f == None):
+        print(f"Error trying to load habits file")
+        print("Aborted!")
+        exit(1)
 
-        file = open_file("quotes.json", "r")
-        self.quotes_json = json.load(file)
-        file.close()
+    habits_json["habits"].append(habit)
+    write_to_file(json.dumps(habits_json), f)
+    f.close()
+    return habits_json
+
+def load_habits_json() -> HabitsJson | None:
+    f = open_file("habits.json", "r+")
+    habits_json: HabitsJson = {
+        "habits": []
+    }
+
+    if (f == None):
+        return None
+
+    habits_json["habits"] = json.load(f)
+    f.close()
+    return habits_json
+
+class State:
+    habits_json: HabitsJson
+    quotes_json: QuotesJSON
+
+    def __init__(self, habit: Habit | None):
+        habits_json = load_habits_json()
+        habits_json = add_habit(habit, habits_json)
+
+        if (habits_json == None):
+            print(f"Error trying to load habits_json data")
+            print("Aborted!")
+            exit(1)
+
+        self.habits_json = habits_json
+
+        f = open_file("quotes.json", "r")
+        if (f == None):
+            print(f"Error trying to load quotes file")
+            print("Aborted!")
+            exit(1)
+
+        self.quotes_json = json.load(f)
+        f.close()
 
 class Renderer:
     @staticmethod
     def render_greeting():
         username = Renderer.colored_text(os.getlogin(), "magenta") 
         greeting = f"Hello {username}"
-        f = open_file("ascii.txt", "r").read()
-        click.echo(f)
+        f = open_file("ascii.txt", "r")
+        if (f == None):
+            print(f"Error trying to load ascii.txt file")
+            print("Aborted!")
+            exit(1)
+
+        ascii = f.read()
+        click.echo(ascii)
         click.echo(greeting)
         click.echo("\n")
 
@@ -150,12 +181,17 @@ class Renderer:
 @click.option("--habit", help='The action or name of the habit, like: "drinking alcohol" or "smoking"')
 def cli(habit):
     """A CLI app to track your bad habits"""
-
     habit_to_add: Habit = {
         "date": "",
-        "name": ""
+        "name": "",
+        "reasons": []
     }
     if (habit):
+        dsc = click.prompt("Type a reason for you to want to this habit")
+        reason: Reason = {
+            "description": dsc 
+        }
+        habit_to_add["reasons"].append(reason)
         habit_to_add["name"] = habit
 
         date = datetime.now()
