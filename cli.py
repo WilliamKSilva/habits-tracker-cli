@@ -7,22 +7,26 @@ from datetime import datetime
 
 from cli_json import Habit, HabitsJson, QuotesJSON, Reason, LastQuote
 
+def click_error(message: str):
+    print(message)
+    print("Aborted!")
+
 def open_file(path: str, mode: str): 
     try: 
         return open(path, mode)
     except FileNotFoundError:
         return None
     except OSError as error:
-        print(f"Error trying to access file: {error}")
-        print("Aborted!")
+        msg = f"Error trying to access file: {error}"
+        click_error(msg)
         exit(1)
 
-def create_file(path: str):
+def create_file(path: str) -> IO[Any]:
     try:
         return open(path, "a")
     except OSError:
-        print(f"Error trying to create file {path}")
-        print("Aborted!")
+        msg = f"Error trying to create file {path}"
+        click_error(msg)
         exit(1)
 
 def write_to_file(data, f: IO[Any]):
@@ -34,8 +38,8 @@ def add_habit(habit: Habit | None, habits_json: HabitsJson | None):
     if (habits_json == None):
         # User don't have any habits and did not passed the required first one
         if (habit == None):
-            print(f"You need to pass an initial habit to start tracking")
-            print("Aborted!")
+            msg = f"You need to pass an initial habit to start tracking"
+            click_error(msg)
             exit(1)
 
         new_habits_json: HabitsJson = {
@@ -47,15 +51,13 @@ def add_habit(habit: Habit | None, habits_json: HabitsJson | None):
         f.close()
         return new_habits_json 
 
-    print("here")
-
     if (habit == None):
         return habits_json
 
     f = open_file("habits.json", "r+")
     if (f == None):
-        print(f"Error trying to load habits file")
-        print("Aborted!")
+        msg = f"Error trying to load habits file"
+        click_error(msg)
         exit(1)
 
     habits_json["habits"].append(habit)
@@ -86,8 +88,8 @@ class State:
         habits_json = add_habit(habit, habits_json)
 
         if (habits_json == None):
-            print(f"Error trying to load habits_json data")
-            print("Aborted!")
+            msg = f"Error trying to load habits_json data"
+            click_error(msg)
             exit(1)
 
         self.habits_json = habits_json
@@ -108,8 +110,8 @@ class Renderer:
         greeting = f"Hello {username}"
         f = open_file("ascii.txt", "r")
         if (f == None):
-            print(f"Error trying to load ascii.txt file")
-            print("Aborted!")
+            msg = f"Error trying to load ascii.txt file"
+            click_error(msg)
             exit(1)
 
         ascii = f.read()
@@ -130,6 +132,13 @@ class Renderer:
             days = f" {difference.days} {singular if (difference.days == 1) else plural}"
             habit_text = Renderer.colored_text(f"{days} without {name}", "green")
             click.echo(habit_text)
+
+    @staticmethod
+    def render_reasons(habit_name: str, reasons: List[Reason]):
+        reason_text = f"You decided to stop with {habit_name} because of: "
+        for r in reasons:
+            reason_text += f"{r['description'] }"
+            click.echo(reason_text)
 
     @staticmethod
     def render_quote(quotes_json: QuotesJSON):
@@ -170,11 +179,15 @@ class Renderer:
         quotes_json["last_quote"] = last_quote
         updated_json = json.dumps(quotes_json)
 
-        file = open_file("quotes.json", "w")
-        file.seek(0)
-        file.write(updated_json)
-        file.truncate()
-        file.close()
+        f = open_file("quotes.json", "w")
+        if (f == None):
+            msg = f"Error trying to open quotes.json file"
+            click_error(msg)
+            exit(1)
+        f.seek(0)
+        f.write(updated_json)
+        f.truncate()
+        f.close()
 
     @staticmethod
     def colored_text(text: str, color: str): 
