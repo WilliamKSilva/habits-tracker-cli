@@ -84,9 +84,12 @@ class State:
     quotes_json: QuotesJSON
 
     def __init__(self, habit: Habit | None):
+        # Try to load existing habits
         habits_json = load_habits_json()
+        # Add habit if was passed and create the habits file if don't exist yet
         habits_json = add_habit(habit, habits_json)
 
+        # If habits file still don't exist and wasn't loaded, something went wrong 
         if (habits_json == None):
             msg = f"Error trying to load habits_json data"
             click_error(msg)
@@ -135,9 +138,10 @@ class Renderer:
 
     @staticmethod
     def render_reasons(habit_name: str, reasons: List[Reason]):
-        reason_text = f"You decided to stop with {habit_name} because of: "
+        reason_text = f"\n You decided to stop with {habit_name} because: \n"
         for r in reasons:
-            reason_text += f"{r['description'] }"
+            desc = f" {r['description']}\n"
+            reason_text += Renderer.colored_text(desc, "magenta") 
             click.echo(reason_text)
 
     @staticmethod
@@ -202,6 +206,8 @@ def cli(habit):
         "name": "",
         "reasons": []
     }
+    state: State | None = None
+
     if (habit):
         dsc = click.prompt("Type a reason for you to want to this habit")
         reason: Reason = {
@@ -212,12 +218,15 @@ def cli(habit):
 
         date = datetime.now()
         habit_to_add["date"] = date.strftime("%Y-%m-%d") 
-
-    state = State(habit_to_add)
+        state = State(habit_to_add)
+    else:
+        state = State(None)
 
     Renderer.render_greeting()
 
     Renderer.render_habits(state.habits_json["habits"])
+    for h in state.habits_json["habits"]:
+        Renderer.render_reasons(h["name"], h["reasons"])
 
     Renderer.render_quote(state.quotes_json)
 
